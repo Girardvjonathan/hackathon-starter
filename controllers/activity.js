@@ -2,6 +2,10 @@ const Activity = require('../models/Activity');
 const mock = require('../models/MockData');
 const moment = require('moment');
 
+function isInt(value) {
+  return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value))
+}
+
 const getHighChartOptions = (activities) => {
   const options = {
     title: {
@@ -24,7 +28,7 @@ const getHighChartOptions = (activities) => {
       // TODO fix that (must have change with new API)
       formatter: function formatter() {
         let text = '';
-        if (this.series.name === 'Running') {
+        if (this.series.name === 'Distance (km)') {
           text = `${this.x} <br>You have run ${this.y.toFixed(2)} km`;
         } else {
           text = `${this.x} <br>Your pace is ${this.y.toFixed(2)} min/km`;
@@ -41,8 +45,8 @@ const getHighChartOptions = (activities) => {
     series: []
   };
   const categories = [];
-  const running = { name: 'Running', data: [] };
-  const pace = { name: 'Running Pace', data: [] };
+  const running = { name: 'Distance (km)', data: [] };
+  const paces = { name: 'Running Pace (min/km)', data: [] };
   let totalTime = moment.duration();
   let totalDistance = 0;
   activities.forEach((entry) => {
@@ -54,13 +58,13 @@ const getHighChartOptions = (activities) => {
       const minutes = moment.duration(entry.duration).asMinutes();
       // const minutes = new Duration(`${entry.duration}ms`).minutes();
       entry.pace = Math.round((minutes / entry.distance) * 1e2) / 1e2;
-      pace.data.push(entry.pace);
+      paces.data.push(entry.pace);
       totalTime = moment.duration(totalTime) + moment.duration(entry.duration);
-      entry.duration = moment.duration(entry.duration).asMinutes();
+      entry.duration = minutes;
     }
   });
   options.series.push(running);
-  options.series.push(pace);
+  options.series.push(paces);
   totalTime = moment.duration(totalTime).asMinutes();
   const averagePaceMin = Math.floor(totalTime / totalDistance);
   const averagePaceSec = Math.floor((totalTime / totalDistance % 1) * 60);
@@ -78,37 +82,46 @@ exports.getActivities = (req, res, next) => {
     return res.redirect('/login');
   }
 
-  Activity.find({ userId: req.user._id }, (err, activities) => {
-    if (err) {
-      return next(err);
-    }
-    /**
-     * if(typeof $stateParams.date == 'undefined' ||
-     * !moment($stateParams.date,'D-M-YYYY').isValid()) {
-     *       vm.date = moment().format('D-M-YYYY')   ;
-     *   } else {
-     *       vm.date = $stateParams.date;
-     *   }
-     * console.log('la date est : '+ vm.date);
-     * vm.previous_date = moment(vm.date, 'D-M-YYYY').subtract(7, 'days').format('D-M-YYYY');
-     * vm.next_date = moment(vm.date, 'D-M-YYYY').add(7, 'days').format('D-M-YYYY');
-     */
-    activities.sort((a, b) => {
-      const c = new Date(a.date);
-      const d = new Date(b.date);
-      return c - d;
+  const week = req.query.week;
+  let start = moment('12-25-1990', 'MM-DD-YYYY');
+  let end = moment().add(52, 'weeks');
+  let previousWeek = -1;
+  let nextWeek = 1;
+  if (isInt(week)) {
+    previousWeek = parseInt(week, 10) - 1;
+    nextWeek = parseInt(week, 10) + 1;
+    start = moment().add(week, 'weeks').startOf('isoWeek');
+    end = moment().add(week, 'weeks').endOf('isoWeek');
+  }
+  previousWeek = `/activities?week=${previousWeek}`;
+  nextWeek = `/activities?week=${nextWeek}`;
+
+  Activity.find({ userId: req.user._id })
+    .where('date')
+    .gt(start)
+    .lt(end)
+    .exec((err, activities) => {
+      if (err) {
+        return next(err);
+      }
+      activities.sort((a, b) => {
+        const c = new Date(a.date);
+        const d = new Date(b.date);
+        return c - d;
+      });
+      const [averagePaceMin, averagePaceSec, totalTime, totalDistance, options] = getHighChartOptions(activities);
+      res.render('activity/activities', {
+        title: 'Activities',
+        activities,
+        options,
+        averagePaceMin,
+        averagePaceSec,
+        totalTime,
+        totalDistance,
+        previousWeek,
+        nextWeek
+      });
     });
-    const [averagePaceMin, averagePaceSec,totalTime, totalDistance, options] = getHighChartOptions(activities);
-    res.render('activity/activities', {
-      title: 'Activities',
-      activities,
-      options,
-      averagePaceMin,
-      averagePaceSec,
-      totalTime,
-      totalDistance
-    });
-  });
 };
 
 exports.setMock = (req, res) => {
