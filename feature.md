@@ -3,6 +3,9 @@ Feature
 ### 1.1 version x
 * Set goal and get remainder (frequency => user setting)
 * Change to D3 (charts) 
+* Check stats with date query param
+* Mobile version
+* Integration
 
 ### 1.0.1
 * View activity by week (user setting)
