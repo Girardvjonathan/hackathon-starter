@@ -143,7 +143,7 @@ exports.createActivity = (req, res) => {
       now: moment().format('YYYY-MM-DD')
     });
   }
-  req.assert('distance', 'Distance must be greater than 0').isInt().gte(0);
+  req.assert('distance', 'Distance must be greater than 0').gte(0);
   req.assert('date', 'Enter a valid date').isDate();
   req.assert('unit', 'Bad unit mesure').unitValidator();
   req.assert('hour', 'Hour must be greater than 0').isInt().gte(0);
@@ -151,17 +151,23 @@ exports.createActivity = (req, res) => {
   req.assert('seconde', 'Seconds must be between 0 and 59').isInt().gte(0).lte(59);
   const errors = req.validationErrors();
 
+  if (req.body.unit === 'mi') {
+    req.body.distance *= 1.60934;
+  }
+
   if (errors) {
     req.flash('errors', errors);
     return res.redirect('/activity/create');
   }
   Activity.create(new Activity({
     userId: req.user._id,
-    duration: moment.duration(`${req.body.hour}:${req.body.minute}:${req.body.seconde}`),
+    duration: moment.duration(`${req.body.hour}:${req.body.minute}:${req.body.seconde}`).asMilliseconds(),
     date: moment(req.body.date),
     distance: req.body.distance,
     note: '',
     type: 'Course'
+  }, (err) => {
+    console.log(err);
   }), function () {
     return res.redirect('/activities');
   });

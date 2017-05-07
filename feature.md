@@ -11,6 +11,7 @@ Feature
 * View activity by week (user setting)
 * Easy mod (chart replaced by calendar and star - activity = date)
 * Dashboard (recent activity and link for setting)
+* Work for miles and km (user settings)
 
 ### Current [WIP]
 * [done]View activity by week ==> [TODO] (user setting)
