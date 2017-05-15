@@ -28,7 +28,10 @@ block content
             th(scope="row")= i
             td=moment(activity.date).locale('en').format('ll')
             td=activity.duration
-            td=activity.distance.toFixed(2)
+            if activity.distance
+              td=activity.distance.toFixed(2)
+            else
+              td -
             td=activity.pace
             td=activity.type
 

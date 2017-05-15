@@ -7,6 +7,14 @@ block content
   form.form-horizontal(action='/activity/create', method='POST')
     input(type='hidden', name='_csrf', value=_csrf)
     .form-group
+      label.col-sm-3.control-label(for='type') Type
+      .col-sm-3
+        select.form-control(name='type' id='type')
+          option(value='running') running
+          option(value='bike') bike
+          option(value='fitness') fitness
+          option(value='other') other
+    .form-group
       label.col-sm-3.control-label(for='date') Date
       .col-sm-3
         input.form-control(type='date', name='date', id='date', value=now)
@@ -26,6 +34,11 @@ block content
         select.form-control(name='unit')
           option(value='km') km
           option(value='mi') mi
+    .form-group
+      label.col-sm-3.control-label(for='note') Note
+      .col-sm-3
+        textarea.form-control(rows="4" cols="50" id='note' name='note')
+
     .form-group
       .col-sm-offset-3.col-sm-4
         button.btn.btn.btn-primary(type='submit')

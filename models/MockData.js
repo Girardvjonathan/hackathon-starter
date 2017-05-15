@@ -18,7 +18,6 @@ exports.mockData = (userId) => {
       date,
       distance,
       note: 'Tres bon entrainement',
-      type: 'Course'
     }));
   }
 

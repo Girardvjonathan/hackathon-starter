@@ -1,9 +1,10 @@
 const Activity = require('../models/Activity');
 const mock = require('../models/MockData');
 const moment = require('moment');
+const validator = require('validator');
 
 function isInt(value) {
-  return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value))
+  return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value));
 }
 
 const getHighChartOptions = (activities) => {
@@ -46,22 +47,24 @@ const getHighChartOptions = (activities) => {
   };
   const categories = [];
   const running = { name: 'Distance (km)', data: [] };
-  const paces = { name: 'Running Pace (min/km)', data: [] };
+  const paces = { name: 'Pace', data: [] };
   let totalTime = moment.duration();
   let totalDistance = 0;
+  // Calculate running pace
   activities.forEach((entry) => {
-    if (entry.distance != null) {
+    const minutes = moment.duration(entry.duration).asMinutes();
+    if (entry.type === 'running') {
       const formatedDate = moment(entry.date).locale('en').format('ll');
       categories.push(formatedDate);
       running.data.push(entry.distance);
       totalDistance += entry.distance;
-      const minutes = moment.duration(entry.duration).asMinutes();
       // const minutes = new Duration(`${entry.duration}ms`).minutes();
       entry.pace = Math.round((minutes / entry.distance) * 1e2) / 1e2;
       paces.data.push(entry.pace);
-      totalTime = moment.duration(totalTime) + moment.duration(entry.duration);
-      entry.duration = minutes;
     }
+    totalTime = moment.duration(totalTime) + moment.duration(entry.duration);
+
+    entry.duration = minutes;
   });
   options.series.push(running);
   options.series.push(paces);
@@ -143,29 +146,44 @@ exports.createActivity = (req, res) => {
       now: moment().format('YYYY-MM-DD')
     });
   }
-  req.assert('distance', 'Distance must be greater than 0').gte(0);
-  req.assert('date', 'Enter a valid date').isDate();
-  req.assert('unit', 'Bad unit mesure').unitValidator();
-  req.assert('hour', 'Hour must be greater than 0').isInt().gte(0);
-  req.assert('minute', 'Minutes must be between 0 and 59').isInt().gte(0).lte(59);
-  req.assert('seconde', 'Seconds must be between 0 and 59').isInt().gte(0).lte(59);
-  const errors = req.validationErrors();
 
-  if (req.body.unit === 'mi') {
-    req.body.distance *= 1.60934;
+  // Validation
+  if (req.body.type === 'running') {
+    req.assert('distance', 'Distance must be greater than 0').gte(0);
+    req.assert('unit', 'Bad unit mesure').unitValidator();
+    req.assert('hour', 'Hour must be greater than 0').isInt().gte(0);
+    req.assert('minute', 'Minutes must be between 0 and 59').isInt().gte(0).lte(59);
+    req.assert('seconde', 'Seconds must be between 0 and 59').isInt().gte(0).lte(59);
   }
+  let ms = 0;
+
+  // Sanitization
+  validator.escape(req.body.note);
+
+  req.assert('date', 'Enter a valid date').isDate();
+
+  const errors = req.validationErrors();
 
   if (errors) {
     req.flash('errors', errors);
     return res.redirect('/activity/create');
   }
+
+  if (req.body.unit === 'mi') {
+    req.body.distance *= 1.60934;
+  }
+
+  if (req.body.hour) {
+    ms = moment.duration(`${req.body.hour}:${req.body.minute}:${req.body.seconde}`).asMilliseconds();
+  }
+
   Activity.create(new Activity({
     userId: req.user._id,
-    duration: moment.duration(`${req.body.hour}:${req.body.minute}:${req.body.seconde}`).asMilliseconds(),
+    duration: ms,
     date: moment(req.body.date),
     distance: req.body.distance,
-    note: '',
-    type: 'Course'
+    note: req.body.note || '',
+    type: req.body.type
   }, (err) => {
     console.log(err);
   }), function () {

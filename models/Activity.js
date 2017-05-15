@@ -4,13 +4,15 @@ const mongoose = require('mongoose');
 const ActivitySchema = mongoose.Schema({
   userId: {
     type: String,
-    index: true
+    index: true,
+    required: true
   },
   duration: {
     type: Number
   },
   date: {
-    type: Date
+    type: Date,
+    required: true
   },
   distance: {
     type: Number
@@ -19,7 +21,10 @@ const ActivitySchema = mongoose.Schema({
     type: String
   },
   type: {
-    type: String
+    type: String,
+    enum: ['running', 'bike', 'other', 'fitness'],
+    default: 'running',
+    required: false
   }
 });
 
